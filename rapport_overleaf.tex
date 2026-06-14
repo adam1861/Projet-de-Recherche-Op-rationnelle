@@ -1,0 +1,728 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usepackage{float}
+\usepackage{caption}
+
+\geometry{margin=2.3cm}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!50!black,
+    urlcolor=blue!50!black,
+    citecolor=blue!50!black
+}
+
+\setlist[itemize]{topsep=3pt,itemsep=2pt}
+\setlist[enumerate]{topsep=3pt,itemsep=2pt}
+
+\newcommand{\question}[1]{\paragraph{\textcolor{blue!50!black}{#1.}}}
+\newcommand{\mad}{\mathrm{MAD}}
+\newcommand{\tonnes}{\mathrm{T}}
+
+\title{\textbf{Simulateur Capacité--Commande}\\
+\large Projet de Recherche Opérationnelle -- Cas Maghreb Steel}
+\author{EMINES UM6P -- Promotion 2026}
+\date{Juin 2026}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+% ============================================================
+\section{Introduction}
+
+Maghreb Steel souhaite disposer d'un simulateur permettant d'arbitrer rapidement entre les commandes clients et les capacités disponibles de l'usine de laminage à froid de Tit Mellil. Le problème est industriellement important car le carnet de commandes dépasse volontairement la capacité disponible : il faut donc choisir les commandes qui créent le plus de valeur, tout en respectant les contraintes métallurgiques et opérationnelles.
+
+\question{E1}
+La question business centrale est la suivante : \textit{quelles commandes faut-il accepter, sur quelles routes les produire, et à quelle semaine les livrer afin de maximiser la marge sur coût variable de l'usine sur un horizon de quatre semaines ?}
+
+Cette question est différente d'un simple calcul de coût, car le simulateur ne se contente pas d'évaluer une commande isolée. Il compare plusieurs commandes concurrentes, consomme des ressources rares, intègre des pénalités de retard, et mesure le coût d'opportunité d'utiliser une ligne ou un grade HRC pour une commande plutôt qu'une autre.
+
+Le périmètre principal du modèle couvre les familles CRC, HDG, PPGI et BACR. La famille HRC DEC est traitée comme une famille spéciale passant uniquement par PK. La famille Quarto est exclue du flux principal, car elle ne suit pas le circuit de laminage à froid considéré dans le projet.
+
+Le carnet contient 66 commandes pour un total de 17\,201 tonnes. La répartition par famille est donnée dans le tableau \ref{tab:tonnage-famille}.
+
+\begin{table}[H]
+\centering
+\caption{Tonnage demandé par famille}
+\label{tab:tonnage-famille}
+\begin{tabular}{lrr}
+\toprule
+Famille & Nombre de commandes & Tonnage demandé (T) \\
+\midrule
+HDG & 21 & 7\,212 \\
+CRC & 25 & 4\,991 \\
+PPGI & 11 & 3\,217 \\
+BACR & 6 & 928 \\
+HRC DEC & 2 & 610 \\
+Quarto & 1 & 243 \\
+\midrule
+\textbf{Total} & \textbf{66} & \textbf{17\,201} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\question{E3}
+Avant résolution, les familles les plus contraintes semblent être HDG, à cause de son volume élevé et de son passage par LGA/LGB, et CRC, car elle impose le chemin complet PK $\rightarrow$ CRMB $\rightarrow$ BAF $\rightarrow$ SKP. Côté grades, S320 est probablement limitant, avec 1\,935 T demandées pour seulement 800 T disponibles. DX51 est aussi tendu, avec 4\,405 T demandées contre 3\,200 T disponibles.
+
+\question{E4}
+Les trois principaux leviers du planificateur sont :
+
+\begin{itemize}
+    \item choisir les commandes à accepter ou refuser : variable de décision ;
+    \item choisir la route industrielle admissible : variable de décision ;
+    \item décaler certaines livraisons avec pénalité : variable de décision.
+\end{itemize}
+
+Les cadences, les rendements, les prix HRC, les arrêts planifiés et les stocks initiaux sont considérés comme des paramètres fixés.
+
+\question{B1}
+Du point de vue du directeur commercial, une question additionnelle utile serait de déterminer le prix minimal acceptable d'une nouvelle commande. Cette extension peut être intégrée en calculant le coût d'opportunité des ressources consommées par la commande : HRC, capacités machines, stockage et retard. Le prix plancher est alors le prix qui rend la marge nette non négative après prise en compte de ces coûts d'opportunité.
+
+Les objectifs du simulateur sont donc :
+
+\begin{itemize}
+    \item maximiser la marge industrielle ;
+    \item respecter les capacités, les rendements, les arrêts planifiés, les stocks et la disponibilité HRC ;
+    \item identifier les commandes refusées et les contraintes bloquantes ;
+    \item produire un plan de marche lisible par ligne, famille et semaine ;
+    \item permettre des analyses de sensibilité pour aider la décision.
+\end{itemize}
+
+% ============================================================
+\section{Formulation}
+
+\question{E2}
+Les flux métallurgiques modélisés sont les suivants :
+
+\begin{itemize}
+    \item HRC DEC : HRC $\rightarrow$ PK $\rightarrow$ HRC DEC ;
+    \item CRC : HRC $\rightarrow$ PK $\rightarrow$ CRMB $\rightarrow$ BAF $\rightarrow$ SKP $\rightarrow$ CRC ;
+    \item HDG : HRC $\rightarrow$ PK $\rightarrow$ \{CRMA ou CRMB\} $\rightarrow$ \{LGA ou LGB\} $\rightarrow$ HDG ;
+    \item PPGI : HRC $\rightarrow$ PK $\rightarrow$ \{CRMA ou CRMB\} $\rightarrow$ LGA $\rightarrow$ PPGI ;
+    \item BACR voie A : HRC $\rightarrow$ PK $\rightarrow$ CRMB $\rightarrow$ BAF $\rightarrow$ LGB $\rightarrow$ BACR ;
+    \item BACR voie B : HRC $\rightarrow$ PK $\rightarrow$ \{CRMA ou CRMB\} $\rightarrow$ \{LGA ou LGB\} $\rightarrow$ BACR.
+\end{itemize}
+
+Les points de branchement sont le choix CRMA/CRMB, le choix LGA/LGB et, pour BACR, le choix entre la voie A via BAF et la voie B directe. Les points de confluence apparaissent lorsque plusieurs routes peuvent alimenter une même famille finale, notamment HDG et BACR.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+node distance=1.5cm,
+box/.style={draw, rounded corners, align=center, minimum height=0.8cm, minimum width=1.6cm},
+arrow/.style={->, thick}
+]
+\node[box] (hrc) {HRC};
+\node[box, right=of hrc] (pk) {PK};
+\node[box, above right=of pk] (crma) {CRMA};
+\node[box, below right=of pk] (crmb) {CRMB};
+\node[box, right=of crma] (lga) {LGA};
+\node[box, right=of crmb] (baf) {BAF};
+\node[box, below right=of baf] (skp) {SKP};
+\node[box, above right=of baf] (lgb) {LGB};
+\node[box, right=of lga] (hdg) {HDG/PPGI};
+\node[box, right=of lgb] (bacr) {HDG/BACR};
+\node[box, right=of skp] (crc) {CRC};
+
+\draw[arrow] (hrc) -- (pk);
+\draw[arrow] (pk) -- (crma);
+\draw[arrow] (pk) -- (crmb);
+\draw[arrow] (crma) -- (lga);
+\draw[arrow] (crma) -- (lgb);
+\draw[arrow] (crmb) -- (lga);
+\draw[arrow] (crmb) -- (lgb);
+\draw[arrow] (crmb) -- (baf);
+\draw[arrow] (baf) -- (skp);
+\draw[arrow] (baf) -- (lgb);
+\draw[arrow] (lga) -- (hdg);
+\draw[arrow] (lgb) -- (bacr);
+\draw[arrow] (skp) -- (crc);
+\end{tikzpicture}
+\caption{Schéma simplifié des flux métallurgiques modélisés}
+\end{figure}
+
+La contrainte supplémentaire transmise en image est intégrée de la façon suivante :
+
+\begin{itemize}
+    \item si $e_i < 0.6$, la ligne aval doit être LGA ;
+    \item si $e_i > 0.6$, la ligne aval doit être strictement LGB ;
+    \item aucune commande du fichier n'a une épaisseur exactement égale à 0.6 mm.
+\end{itemize}
+
+Comme PPGI est exclusivement LGA dans le cadrage du projet, les commandes PPGI avec $e_i > 0.6$ deviennent non routables.
+
+\subsection{Ensembles et paramètres}
+
+Les ensembles utilisés sont :
+
+\begin{itemize}
+    \item $I$ : ensemble des commandes ;
+    \item $T=\{1,2,3,4\}$ : semaines de l'horizon ;
+    \item $L$ : lignes de production, avec $L=\{\text{PK},\text{CRMA},\text{CRMB},\text{BAF},\text{SKP},\text{LGA},\text{LGB}\}$ ;
+    \item $F$ : familles de produits ;
+    \item $G$ : grades d'acier ;
+    \item $R_i$ : routes admissibles de la commande $i$.
+\end{itemize}
+
+Les principaux paramètres sont :
+
+\begin{itemize}
+    \item $q_i$ : tonnage de la commande $i$ ;
+    \item $p_i$ : prix de vente de la commande $i$, en MAD/T ;
+    \item $d_i$ : semaine de livraison demandée ;
+    \item $g_i$ : grade de la commande ;
+    \item $e_i$ : épaisseur de la commande ;
+    \item $\rho_l$ : rendement de la ligne $l$ ;
+    \item $\alpha_l$, $\beta_l$, $\gamma_l$ : taux de chutes, déclassé et non-conforme ;
+    \item $c_l(e_i)$ : coût variable de transformation de la ligne $l$ pour l'épaisseur $e_i$ ;
+    \item $h_{g,w}$ : prix HRC du grade $g$ et de la largeur $w$ ;
+    \item $H_g$ : disponibilité HRC du grade $g$ sur l'horizon ;
+    \item $cad_{l,f}$ : cadence journalière de la ligne $l$ pour la famille $f$ ;
+    \item $arret_{l,t}$ : nombre de jours d'arrêt planifié de la ligne $l$ en semaine $t$ ;
+    \item $S^0_f$, $S^{min}_f$, $S^{max}_f$ : stock initial, minimum et maximum de produit fini.
+\end{itemize}
+
+La capacité nette est :
+
+\begin{equation}
+A_{l,f,t} = cad_{l,f}\left(7 - arret_{l,t}\right)
+\end{equation}
+
+\subsection{Variables de décision}
+
+\question{E5}
+La variable principale est :
+
+\begin{equation}
+x_{i,r,p,d} \in \{0,1\}
+\end{equation}
+
+Elle vaut 1 si la commande $i$ est acceptée, produite selon la route $r$, en semaine de production $p$, et livrée en semaine $d$. Elle vaut 0 sinon.
+
+Pour le bonus campagnes, on ajoute :
+
+\begin{equation}
+z_{l,f,t} \in \{0,1\}
+\end{equation}
+
+Cette variable vaut 1 si la ligne $l$ est ouverte pour une campagne de famille $f$ en semaine $t$.
+
+Pour obtenir les shadow prices et les coûts réduits, on résout aussi la relaxation linéaire :
+
+\begin{equation}
+0 \leq x_{i,r,p,d} \leq 1, \qquad 0 \leq z_{l,f,t} \leq 1
+\end{equation}
+
+\subsection{Fonction objectif}
+
+\question{E6}
+Le modèle maximise la marge totale :
+
+\begin{equation}
+\max Z = \sum_{i\in I}\sum_{r\in R_i}\sum_{p\in T}\sum_{d\in T}
+x_{i,r,p,d} M_{i,r,p,d}
+\end{equation}
+
+La marge d'une option commande-route-semaine est :
+
+\begin{align}
+M_{i,r,p,d} ={}&
+\text{Recette}_i
+- \text{CoutHRC}_{i,r}
+- \text{CoutTransfo}_{i,r}
+- \text{CoutZinc}_{i,r}
+- \text{CoutPeinture}_{i,r} \notag\\
+&- \text{PenaliteRetard}_{i,d}
+- \text{CoutStockage}_{i,p,d}
++ \text{ValeurChutes}_{i,r}
++ \text{ValeurDeclasse}_{i,r}
++ \text{ValeurNonConforme}_{i,r}
+\end{align}
+
+La recette est :
+
+\begin{equation}
+\text{Recette}_i = q_i p_i
+\end{equation}
+
+Pour une route $r=(l_1,\ldots,l_k)$, le tonnage entrant dans la ligne $l_m$ est :
+
+\begin{equation}
+Input_{i,r,l_m} =
+\frac{q_i}{\prod_{n=m}^{k}\rho_{l_n}}
+\end{equation}
+
+La consommation HRC est :
+
+\begin{equation}
+HRCInput_{i,r} =
+\frac{q_i}{\prod_{l\in r}\rho_l}
+\end{equation}
+
+Le coût HRC est :
+
+\begin{equation}
+\text{CoutHRC}_{i,r} =
+HRCInput_{i,r} h_{g_i,w_i}
+\end{equation}
+
+Le coût de transformation est :
+
+\begin{equation}
+\text{CoutTransfo}_{i,r} =
+\sum_{l\in r} Input_{i,r,l} c_l(e_i)
+\end{equation}
+
+La valorisation des chutes est :
+
+\begin{equation}
+\text{ValeurChutes}_{i,r} =
+\sum_{l\in r} Input_{i,r,l}\alpha_l P_{\text{chutes}}
+\end{equation}
+
+Le déclassé et le non-conforme sont valorisés comme fractions du prix conforme :
+
+\begin{equation}
+\text{ValeurDeclasse}_{i,r} =
+\sum_{l\in r} Input_{i,r,l}\beta_l \lambda_{\text{declasse}}p_i
+\end{equation}
+
+\begin{equation}
+\text{ValeurNonConforme}_{i,r} =
+\sum_{l\in r} Input_{i,r,l}\gamma_l \lambda_{\text{NC}}p_i
+\end{equation}
+
+Pour HDG et PPGI, le coût zinc est :
+
+\begin{equation}
+\text{CoutZinc}_i =
+q_i \cdot conso_{\text{zinc}} \cdot P_{\text{zinc}}
+\end{equation}
+
+Pour PPGI, le coût peinture est :
+
+\begin{equation}
+\text{CoutPeinture}_i =
+q_i \cdot conso_{\text{peinture}} \cdot P_{\text{peinture}}
+\end{equation}
+
+\subsection{Contraintes}
+
+Unicité d'acceptation :
+
+\begin{equation}
+\sum_{r\in R_i}\sum_{p\in T}\sum_{d\in T}
+x_{i,r,p,d} \leq 1
+\qquad \forall i\in I
+\end{equation}
+
+Une commande peut être acceptée au plus une fois.
+
+Contrainte de temps :
+
+\begin{equation}
+p \leq d
+\end{equation}
+
+On ne peut pas livrer une commande avant sa production.
+
+\question{B2}
+Le retard est autorisé avec pénalité :
+
+\begin{equation}
+retard_{i,d}=\max(0,d-d_i)
+\end{equation}
+
+\begin{equation}
+\text{PenaliteRetard}_{i,d}
+=q_i \cdot retard_{i,d}\cdot pen_{\text{priorite}_i}
+\end{equation}
+
+\question{E7}
+Les contraintes de capacité sont écrites pour chaque ligne, famille et semaine :
+
+\begin{equation}
+\sum_{\substack{i,r,p,d\\p=t,\,l\in r,\,fam(i)=f}}
+Input_{i,r,l}x_{i,r,p,d}
+\leq A_{l,f,t}
+\qquad \forall l\in L,\; f\in F,\; t\in T
+\end{equation}
+
+Les arrêts planifiés sont intégrés dans $A_{l,f,t}$. Par exemple, LGA/HDG en semaine 1 a une capacité $250(7-1)=1\,500$ T.
+
+\question{E8}
+Le bilan de stock de produit fini est :
+
+\begin{equation}
+S_{f,t}=S^0_f
++\sum_{\substack{i\in f,r,p,d\\p\leq t}} q_i x_{i,r,p,d}
+-\sum_{\substack{i\in f,r,p,d\\d\leq t}} q_i x_{i,r,p,d}
+\end{equation}
+
+\begin{equation}
+S^{min}_f \leq S_{f,t} \leq S^{max}_f
+\qquad \forall f,t
+\end{equation}
+
+La conservation matière est assurée par les rendements dans le calcul des inputs de chaque ligne. Une tonne finale nécessite plus d'une tonne en amont dès que le rendement est inférieur à 1.
+
+\question{B3}
+Le coût de stockage produit fini est intégré dans l'objectif :
+
+\begin{equation}
+\text{CoutStockage}_{i,p,d}
+=q_i\max(0,d-p)c_{\text{stock PF}}
+\end{equation}
+
+Cela décourage les productions trop anticipées lorsqu'elles n'apportent pas assez de marge. Les stocks interprocess sont contrôlés comme buffers statiques dans cette version. Une extension industrielle introduirait des variables de stock interprocess dynamiques par étape et par semaine.
+
+\question{E9}
+La contrainte HRC par grade est :
+
+\begin{equation}
+\sum_{\substack{i,r,p,d\\g_i=g}}
+HRCInput_{i,r}x_{i,r,p,d}
+\leq H_g
+\qquad \forall g\in G
+\end{equation}
+
+Par exemple, pour CRC :
+
+\begin{equation}
+HRCInput_{i,CRC} =
+\frac{q_i}{\rho_{PK}\rho_{CRMB}\rho_{BAF}\rho_{SKP}}
+\end{equation}
+
+\question{B4}
+Avec campagnes binaires :
+
+\begin{equation}
+Q_{l,f,t}\leq A_{l,f,t}z_{l,f,t}
+\end{equation}
+
+\begin{equation}
+Q_{l,f,t}\geq 100z_{l,f,t}
+\end{equation}
+
+\begin{equation}
+\sum_f z_{l,f,t}\leq 1
+\end{equation}
+
+Cette extension évite les mini-batches et impose qu'une ligne soit dédiée à une seule famille par semaine.
+
+\question{E10}
+La cohérence dimensionnelle est respectée : les contraintes de capacité comparent des tonnes à des tonnes, les contraintes HRC comparent des tonnes HRC à des tonnes disponibles, les contraintes de stock comparent des tonnes à des bornes en tonnes, et la fonction objectif additionne uniquement des montants en MAD.
+
+% ============================================================
+\section{Implémentation}
+
+\question{E11}
+Le projet est implémenté avec PuLP, conformément à la consigne du professeur. Le solveur utilisé est CBC, fourni avec PuLP.
+
+PuLP est adapté car il est simple à lire, facile à installer, et suffisant pour un programme linéaire mixte de taille pédagogique. Pyomo serait plus puissant pour une industrialisation lourde, mais plus complexe. Gurobi serait plus rapide sur de très grands modèles, mais nécessite une licence.
+
+\question{E12}
+L'architecture du code est la suivante :
+
+\begin{itemize}
+    \item \texttt{main.py} lance la résolution de base, les scénarios et les exports ;
+    \item \texttt{src/data\_loader.py} lit les onglets Excel et construit les dictionnaires de données ;
+    \item \texttt{src/model.py} génère les routes admissibles, calcule les coûts, construit le modèle PuLP et exporte les résultats ;
+    \item \texttt{tests/validate\_solution.py} vérifie la solution sans utiliser le solveur ;
+    \item \texttt{app.py} fournit une interface Streamlit.
+\end{itemize}
+
+Le code lit directement \texttt{Donnees\_MaghrebSteel.xlsx}, construit les options admissibles commande-route-semaine, résout le programme linéaire mixte, puis exporte les résultats dans \texttt{outputs/base\_resultats.xlsx} et dans plusieurs fichiers CSV.
+
+Le modèle de base contient 1\,020 variables et 188 contraintes. Il est résolu en 0.94 seconde. Le modèle avec campagnes contient 1\,100 variables et 296 contraintes. Il est résolu en 12.10 secondes.
+
+La relaxation LP est aussi résolue pour obtenir les shadow prices et les coûts réduits. Cette relaxation est nécessaire car les prix d'ombre d'un MILP entier ne sont pas directement interprétables comme ceux d'un programme linéaire.
+
+\question{E15}
+Le script de validation indépendant contrôle l'unicité des commandes, les routages, la contrainte d'épaisseur, les capacités, la disponibilité HRC et les bornes de stock. Le résultat obtenu est :
+
+\begin{center}
+\fbox{\texttt{Toutes les contraintes controlees sont respectees}}
+\end{center}
+
+\question{B5}
+La comparaison entre MILP et relaxation LP est donnée dans le tableau \ref{tab:bb}.
+
+\begin{table}[H]
+\centering
+\caption{Comparaison MILP et relaxation LP}
+\label{tab:bb}
+\begin{tabular}{lrrrr}
+\toprule
+Modèle & Marge (MMAD) & Temps (s) & Variables & Noeuds CBC \\
+\midrule
+Base MILP & 33.04 & 0.94 & 1\,020 & 222 \\
+Base relaxation LP & 33.33 & 0.06 & 1\,020 & -- \\
+Campagnes MILP & 25.54 & 12.10 & 1\,100 & 767 \\
+Campagnes relaxation LP & 32.65 & 0.07 & 1\,100 & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Les campagnes rendent le modèle plus réaliste mais plus restrictif : elles réduisent la marge et le taux de service.
+
+\question{B6}
+Une application Streamlit a été créée. Elle permet d'éditer le carnet, modifier le prix HRC, simuler un arrêt LGB, activer les campagnes binaires, lancer le solveur et visualiser le plan, les goulots, les commandes et la consommation HRC.
+
+% ============================================================
+\section{Résultats}
+
+\question{E13}
+La solution optimale de base donne :
+
+\begin{table}[H]
+\centering
+\caption{Synthèse de la solution optimale}
+\begin{tabular}{lr}
+\toprule
+Indicateur & Valeur \\
+\midrule
+Statut & Optimal \\
+Marge totale & 33.04 MMAD \\
+Commandes acceptées & 50 / 66 \\
+Commandes refusées & 16 / 66 \\
+Tonnage livré & 13\,551 T \\
+Tonnage demandé & 17\,201 T \\
+Taux de service & 78.78 \% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\question{E14}
+Le plan de marche détaillé est exporté dans \texttt{outputs/base\_capacity.csv} et \texttt{outputs/base\_resultats.xlsx}. Les principales utilisations de lignes sont :
+
+\begin{table}[H]
+\centering
+\caption{Principales utilisations de capacité}
+\begin{tabular}{llrrr}
+\toprule
+Ligne & Famille/Semaine & Utilisé (T) & Capacité (T) & Utilisation \\
+\midrule
+LGA & HDG S1 & 1\,449.7 & 1\,500.0 & 96.65 \% \\
+BAF & CRC S1 & 1\,029.4 & 1\,260.0 & 81.70 \% \\
+BAF & CRC S2 & 956.3 & 1\,260.0 & 75.90 \% \\
+LGB & HDG S1 & 2\,365.3 & 3\,185.0 & 74.26 \% \\
+CRMB & HDG S1 & 3\,933.0 & 5\,523.0 & 71.21 \% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\question{E16}
+Le principal goulot machine est LGA pour HDG en semaine 1. Les lignes PK, CRMA et plusieurs capacités LGB restent globalement moins saturées.
+
+La consommation HRC par grade est :
+
+\begin{table}[H]
+\centering
+\caption{Consommation HRC par grade}
+\begin{tabular}{lrrr}
+\toprule
+Grade & Utilisé (T) & Disponible (T) & Utilisation \\
+\midrule
+DC01 & 6\,610.7 & 6\,750.0 & 97.94 \% \\
+DD13 & 2\,828.2 & 3\,750.0 & 75.42 \% \\
+DX51 & 3\,185.7 & 3\,200.0 & 99.55 \% \\
+DX52 & 1\,458.0 & 1\,500.0 & 97.20 \% \\
+S320 & 725.2 & 800.0 & 90.65 \% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\question{E17}
+Le fichier \texttt{outputs/base\_refused\_shadow\_based.csv} contient la liste complète des commandes refusées avec raison tracée à partir de la relaxation LP.
+
+Exemples :
+
+\begin{itemize}
+    \item CMD-002 et CMD-014 : PPGI d'épaisseur 0.7, non routables car PPGI impose LGA alors que la contrainte ajoutée impose LGB pour $e>0.6$ ;
+    \item CMD-005 : Quarto hors périmètre ;
+    \item CMD-009, CMD-030, CMD-031, CMD-032 et CMD-058 : HRC DX51 rare ;
+    \item CMD-010, CMD-017, CMD-018, CMD-023, CMD-047, CMD-050 et CMD-053 : HRC S320 rare ;
+    \item CMD-055 : HRC DX52 rare.
+\end{itemize}
+
+\question{E18}
+Les shadow prices utiles de la relaxation LP sont :
+
+\begin{table}[H]
+\centering
+\caption{Prix d'ombre des contraintes critiques}
+\begin{tabular}{lr}
+\toprule
+Contrainte & Shadow price \\
+\midrule
+HRC S320 & 1\,974 MAD/T \\
+HRC DX51 & 1\,752 MAD/T \\
+HRC DX52 & 1\,454 MAD/T \\
+LGA/HDG semaine 1 & 472.5 MAD/T \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Interprétation business : une tonne additionnelle de HRC S320, DX51 ou DX52 apporte plus de valeur marginale qu'une tonne additionnelle de capacité LGA/HDG. La matière première est donc un levier prioritaire.
+
+\question{E19}
+Les marges moyennes par famille sont :
+
+\begin{table}[H]
+\centering
+\caption{Marge moyenne par famille}
+\begin{tabular}{lrr}
+\toprule
+Famille & Tonnage livré (T) & Marge moyenne (MAD/T) \\
+\midrule
+PPGI & 2\,447 & 3\,904 \\
+BACR & 928 & 2\,456 \\
+HDG & 6\,907 & 2\,276 \\
+CRC & 2\,659 & 1\,959 \\
+HRC DEC & 610 & 454 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Le modèle privilégie donc PPGI, BACR et HDG lorsque les routes sont admissibles. CRC est plus souvent refusé car il utilise un chemin long et consomme des grades HRC critiques.
+
+\question{B7}
+La commande acceptée la plus rentable par tonne est CMD-006, PPGI DX51, avec une marge de 4\,238 MAD/T. La moins rentable acceptée est CMD-036, HRC DEC DC01, avec 401 MAD/T. Elle est tout de même retenue car elle consomme principalement PK, qui n'est pas un goulot dans la solution.
+
+% ============================================================
+\section{Analyse de sensibilité}
+
+\question{E20}
+Scénario HRC plus cher de 10 \%.
+
+La marge passe de 33.04 MMAD à 24.23 MMAD, soit une baisse de 8.81 MMAD. Le taux de service passe de 78.78 \% à 76.02 \%. Avant relance, l'impact peut être estimé en appliquant la hausse de 10 \% à la consommation HRC du plan de base. La relance confirme que le modèle est très sensible au coût de la matière première.
+
+Interprétation business : la négociation HRC est un levier majeur. Une hausse HRC détériore fortement la marge et conduit le modèle à refuser davantage de commandes.
+
+\question{E21}
+Scénario panne LGB de deux jours supplémentaires en semaine 2.
+
+La marge reste identique à 33.04 MMAD et le taux de service reste à 78.78 \%. Aucune commande ne bascule. Cela s'explique par le fait que LGB semaine 2 n'est pas saturée dans la solution de base. La capacité résiduelle permet d'absorber cette panne.
+
+Interprétation business : cette panne précise est peu critique. En revanche, une panne sur LGA semaine 1 serait beaucoup plus dangereuse, car LGA/HDG semaine 1 est presque saturée.
+
+\question{E22}
+Scénario commande urgente entrante.
+
+La commande urgente de 300 T de HDG DC01, épaisseur 0.5 mm, largeur 1140 mm, semaine 1, prix 11\,500 MAD/T, est acceptée. Elle passe par PK $\rightarrow$ CRMB $\rightarrow$ LGA. Sa marge propre est de 1.067 MMAD. Elle remplace CMD-036 dans le plan optimal.
+
+La marge globale passe de 33.04 MMAD à 33.77 MMAD, soit un gain de 0.728 MMAD. Le taux de service global baisse mécaniquement car le carnet total augmente de 300 T, mais économiquement l'acceptation est rentable.
+
+\question{B8}
+La disponibilité DC01 a été variée de -50 \% à +50 \%. La marge augmente jusqu'à la disponibilité actuelle de 6\,750 T, puis reste stable au-delà. Le changement de pente se situe donc autour de 6\,750 T. Cela signifie qu'une fois ce niveau atteint, DC01 cesse d'être le goulot marginal et d'autres contraintes prennent le relais.
+
+\begin{table}[H]
+\centering
+\caption{Enveloppe de sensibilité DC01}
+\begin{tabular}{rrr}
+\toprule
+Disponibilité DC01 & Marge (MMAD) & Taux de service \\
+\midrule
+50 \% & 27.62 & 61.42 \% \\
+70 \% & 30.30 & 68.43 \% \\
+90 \% & 32.72 & 75.57 \% \\
+100 \% & 33.04 & 78.78 \% \\
+110 \% & 33.04 & 78.78 \% \\
+150 \% & 33.04 & 78.78 \% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\question{B9}
+A -5 \% de cadences, le modèle reste faisable avec le même taux de service de 78.78 \%, mais la marge baisse légèrement à 32.92 MMAD. A +5 \%, la marge reste identique au cas de base. Cette analyse confirme que le plan est relativement robuste aux petites variations de cadence, et que le facteur limitant principal est plutôt la disponibilité HRC.
+
+\begin{table}[H]
+\centering
+\caption{Robustesse aux cadences}
+\begin{tabular}{rrrr}
+\toprule
+Multiplicateur cadence & Marge (MMAD) & Taux de service & Commandes acceptées \\
+\midrule
+0.95 & 32.92 & 78.78 \% & 50 \\
+1.00 & 33.04 & 78.78 \% & 50 \\
+1.05 & 33.04 & 78.78 \% & 50 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================
+\section{Limites et extensions}
+
+\question{E23}
+Les recommandations opérationnelles sont :
+
+\begin{enumerate}
+    \item Sécuriser les approvisionnements HRC S320, DX51 et DX52, car leurs shadow prices sont les plus élevés.
+    \item Protéger la capacité LGA/HDG en semaine 1, qui est le principal goulot machine.
+    \item Prioriser les commandes PPGI, BACR et HDG lorsque leur route est admissible, et renégocier ou refuser certaines commandes CRC de faible marge sur grades rares.
+\end{enumerate}
+
+\question{E24}
+Le modèle reste une version pédagogique d'un problème industriel plus riche.
+
+Première limite : les stocks interprocess ne sont pas dynamiques par étape et par semaine. Le modèle vérifie les buffers, mais ne décrit pas explicitement les flux semaine par semaine entre PK, CRM, BAF, SKP et LGA/LGB.
+
+Deuxième limite : les cadences sont agrégées par ligne et famille. Dans la réalité, elles dépendent plus finement de l'épaisseur, de la largeur, de la nuance, de la qualité de surface et des réglages.
+
+Troisième limite : les campagnes sont modélisées par famille uniquement. Un vrai planning devrait tenir compte des séquences, changements de cylindres, nettoyages, couleurs PPGI, largeurs compatibles, contraintes de bobines et tailles minimales par lot.
+
+Quatrième limite : les contraintes commerciales et financières clients ne sont pas incluses. Le modèle suppose que toutes les commandes sont éligibles financièrement, alors qu'un outil industriel devrait intégrer plafonds clients, encours, conditions de paiement et risque crédit.
+
+Cinquième limite : les commandes sont acceptées entières ou refusées. En pratique, certaines commandes pourraient être livrées partiellement, fractionnées ou renégociées.
+
+\question{B10}
+Pour transformer le prototype en outil de production, il faudrait ajouter :
+
+\begin{itemize}
+    \item connexion ERP et SI commercial ;
+    \item récupération automatique des stocks réels, arrêts, capacités et carnet ;
+    \item modélisation fine des stocks interprocess ;
+    \item cadences par épaisseur, largeur, nuance et gamme ;
+    \item contraintes de séquence et de campagnes réelles ;
+    \item gestion des couleurs et peintures PPGI ;
+    \item simulation multi-horizon, par exemple 8 à 12 semaines ;
+    \item interface utilisateur robuste avec historique des simulations ;
+    \item comparaison automatique de scénarios ;
+    \item droits utilisateurs, logs, tests de non-régression et supervision solveur.
+\end{itemize}
+
+Estimation d'industrialisation : en développement interne, il faut compter 2 à 3 ingénieurs pendant 12 à 18 mois. En prestation externe, le budget probable est de 800\,000 à 1\,500\,000 MAD, incluant développement, intégration SI et formation. Si le simulateur améliore la marge de seulement 2 \%, soit environ 750\,000 MAD par horizon de 4 semaines sur une marge annuelle estimée à 150 MMAD, l'amortissement peut être inférieur à 3 mois d'exploitation.
+
+% ============================================================
+\section{Conclusion}
+
+Le simulateur construit avec PuLP fournit un plan de marche optimal et interprétable pour le carnet Maghreb Steel. La solution de base livre 13\,551 T, soit 78.78 \% du tonnage demandé, avec une marge de 33.04 MMAD. Le modèle identifie les commandes non planifiables, les goulots machines et les grades HRC critiques.
+
+Les recommandations principales sont :
+
+\begin{enumerate}
+    \item sécuriser les approvisionnements HRC S320, DX51 et DX52 ;
+    \item protéger la capacité LGA/HDG en semaine 1 ;
+    \item prioriser les commandes PPGI, BACR et HDG lorsque leur route est admissible ;
+    \item renégocier ou refuser certaines commandes CRC de faible marge sur grades rares.
+\end{enumerate}
+
+Le prototype répond aux objectifs du projet : formulation mathématique, implémentation PuLP, résultats optimaux, validation indépendante, scénarios de sensibilité, bonus campagnes, interface Streamlit et feuille de route d'industrialisation. Pour un usage industriel régulier, l'effort principal porterait sur la finesse des données, l'intégration SI et l'enrichissement des contraintes de planning réel.
+
+\end{document}
