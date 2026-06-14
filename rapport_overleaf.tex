@@ -16,6 +16,8 @@
 \usepackage{float}
 \usepackage{caption}
 
+\usetikzlibrary{positioning}
+
 \geometry{margin=2.3cm}
 \hypersetup{
     colorlinks=true,
@@ -30,6 +32,9 @@
 \newcommand{\question}[1]{\paragraph{\textcolor{blue!50!black}{#1.}}}
 \newcommand{\mad}{\mathrm{MAD}}
 \newcommand{\tonnes}{\mathrm{T}}
+% Repere interne pour calibrer la longueur des sections selon la note de cadrage.
+% La commande est volontairement invisible dans le PDF final.
+\newcommand{\sectiontarget}[1]{}
 
 \title{\textbf{Simulateur Capacité--Commande}\\
 \large Projet de Recherche Opérationnelle -- Cas Maghreb Steel}
@@ -44,6 +49,7 @@
 
 % ============================================================
 \section{Introduction}
+\sectiontarget{1 page}
 
 Maghreb Steel souhaite disposer d'un simulateur permettant d'arbitrer rapidement entre les commandes clients et les capacités disponibles de l'usine de laminage à froid de Tit Mellil. Le problème est industriellement important car le carnet de commandes dépasse volontairement la capacité disponible : il faut donc choisir les commandes qui créent le plus de valeur, tout en respectant les contraintes métallurgiques et opérationnelles.
 
@@ -104,7 +110,9 @@ Les objectifs du simulateur sont donc :
 \end{itemize}
 
 % ============================================================
+\clearpage
 \section{Formulation}
+\sectiontarget{4 a 6 pages}
 
 \question{E2}
 Les flux métallurgiques modélisés sont les suivants :
@@ -429,7 +437,9 @@ Cette extension évite les mini-batches et impose qu'une ligne soit dédiée à 
 La cohérence dimensionnelle est respectée : les contraintes de capacité comparent des tonnes à des tonnes, les contraintes HRC comparent des tonnes HRC à des tonnes disponibles, les contraintes de stock comparent des tonnes à des bornes en tonnes, et la fonction objectif additionne uniquement des montants en MAD.
 
 % ============================================================
+\clearpage
 \section{Implémentation}
+\sectiontarget{2 a 3 pages}
 
 \question{E11}
 Le projet est implémenté avec PuLP, conformément à la consigne du professeur. Le solveur utilisé est CBC, fourni avec PuLP.
@@ -448,6 +458,29 @@ L'architecture du code est la suivante :
 \end{itemize}
 
 Le code lit directement \texttt{Donnees\_MaghrebSteel.xlsx}, construit les options admissibles commande-route-semaine, résout le programme linéaire mixte, puis exporte les résultats dans \texttt{outputs/base\_resultats.xlsx} et dans plusieurs fichiers CSV.
+
+La lecture des données est organisée par onglet. L'onglet \texttt{Commandes} fournit les attributs commerciaux et techniques de chaque commande : identifiant, client, famille, grade, épaisseur, largeur, tonnage, prix, semaine demandée et priorité. Les onglets \texttt{Cadences}, \texttt{Rendements}, \texttt{Couts\_Variables}, \texttt{Prix\_HRC}, \texttt{Stocks\_Initiaux}, \texttt{Arrets\_Planifies} et \texttt{Parametres} sont convertis en dictionnaires Python afin de rendre la construction du modèle plus lisible.
+
+Le module de génération des routes joue un rôle central. Pour chaque commande, il construit uniquement les routes compatibles avec la famille produit, la spécialisation CRMA/CRMB, la contrainte PPGI exclusivement LGA, les routes BACR voie A et voie B, et la contrainte supplémentaire d'épaisseur. Ainsi, les variables impossibles ne sont pas créées. Cette approche réduit la taille du modèle et évite d'ajouter de nombreuses contraintes nulles.
+
+Chaque option de décision correspond à un quadruplet :
+
+\begin{center}
+\texttt{commande -- route -- semaine de production -- semaine de livraison}
+\end{center}
+
+Pour chaque option, le code calcule à l'avance la marge unitaire complète : recettes, coût HRC, coûts de transformation corrigés des rendements, zinc, peinture, stockage, retard, chutes, déclassé et non-conforme. Le solveur reçoit donc un modèle linéaire clair, où les coefficients économiques et physiques sont déjà préparés.
+
+Les exports sont séparés en plusieurs tables :
+
+\begin{itemize}
+    \item \texttt{base\_orders.csv} : statut de chaque commande ;
+    \item \texttt{base\_decisions.csv} : décisions retenues par le modèle ;
+    \item \texttt{base\_capacity.csv} : utilisation des lignes par famille et semaine ;
+    \item \texttt{base\_hrc.csv} : consommation HRC par grade ;
+    \item \texttt{base\_refused\_shadow\_based.csv} : commandes refusées avec raison ;
+    \item \texttt{base\_resultats.xlsx} : classeur Excel multi-onglets.
+\end{itemize}
 
 Le modèle de base contient 1\,020 variables et 188 contraintes. Il est résolu en 0.94 seconde. Le modèle avec campagnes contient 1\,100 variables et 296 contraintes. Il est résolu en 12.10 secondes.
 
@@ -485,7 +518,9 @@ Les campagnes rendent le modèle plus réaliste mais plus restrictif : elles ré
 Une application Streamlit a été créée. Elle permet d'éditer le carnet, modifier le prix HRC, simuler un arrêt LGB, activer les campagnes binaires, lancer le solveur et visualiser le plan, les goulots, les commandes et la consommation HRC.
 
 % ============================================================
+\clearpage
 \section{Résultats}
+\sectiontarget{3 a 5 pages}
 
 \question{E13}
 La solution optimale de base donne :
@@ -529,6 +564,8 @@ CRMB & HDG S1 & 3\,933.0 & 5\,523.0 & 71.21 \% \\
 
 \question{E16}
 Le principal goulot machine est LGA pour HDG en semaine 1. Les lignes PK, CRMA et plusieurs capacités LGB restent globalement moins saturées.
+
+La lecture opérationnelle du plan montre que la saturation n'est pas uniforme sur l'usine. PK dispose d'une capacité confortable dans la plupart des semaines, alors que certaines ressources aval deviennent beaucoup plus critiques. Cela signifie que le problème ne se résout pas simplement en regardant la capacité totale de l'usine : il faut raisonner par chemin métallurgique complet. Une commande CRC consomme par exemple CRMB, BAF et SKP, alors qu'une commande HDG consomme PK, un laminoir CRMA/CRMB et une ligne de galvanisation LGA/LGB.
 
 La consommation HRC par grade est :
 
@@ -602,11 +639,35 @@ HRC DEC & 610 & 454 \\
 
 Le modèle privilégie donc PPGI, BACR et HDG lorsque les routes sont admissibles. CRC est plus souvent refusé car il utilise un chemin long et consomme des grades HRC critiques.
 
+Le tableau \ref{tab:service-famille} donne la lecture par famille. Il montre que BACR et HRC DEC sont totalement servis, tandis que CRC supporte la majorité des refus. Cette structure est cohérente avec les marges unitaires et les contraintes de matière première.
+
+\begin{table}[H]
+\centering
+\caption{Service par famille}
+\label{tab:service-famille}
+\begin{tabular}{lrrr}
+\toprule
+Famille & Tonnage demandé (T) & Tonnage livré (T) & Taux de service \\
+\midrule
+BACR & 928 & 928 & 100.00 \% \\
+CRC & 4\,991 & 2\,659 & 53.28 \% \\
+HDG & 7\,212 & 6\,907 & 95.77 \% \\
+HRC DEC & 610 & 610 & 100.00 \% \\
+PPGI & 3\,217 & 2\,447 & 76.07 \% \\
+Quarto & 243 & 0 & 0.00 \% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+L'interprétation des refus confirme cette lecture. Les refus PPGI d'épaisseur 0.7 ne sont pas des refus économiques : ils viennent d'une incompatibilité de routage entre la règle PPGI exclusivement LGA et la contrainte d'épaisseur imposant LGB pour $e>0.6$. Les refus CRC sont plutôt des refus économiques et capacitaires : le modèle préfère réserver les grades rares à des commandes à meilleure contribution marginale.
+
 \question{B7}
 La commande acceptée la plus rentable par tonne est CMD-006, PPGI DX51, avec une marge de 4\,238 MAD/T. La moins rentable acceptée est CMD-036, HRC DEC DC01, avec 401 MAD/T. Elle est tout de même retenue car elle consomme principalement PK, qui n'est pas un goulot dans la solution.
 
 % ============================================================
+\clearpage
 \section{Analyse de sensibilité}
+\sectiontarget{2 a 3 pages}
 
 \question{E20}
 Scénario HRC plus cher de 10 \%.
@@ -614,6 +675,22 @@ Scénario HRC plus cher de 10 \%.
 La marge passe de 33.04 MMAD à 24.23 MMAD, soit une baisse de 8.81 MMAD. Le taux de service passe de 78.78 \% à 76.02 \%. Avant relance, l'impact peut être estimé en appliquant la hausse de 10 \% à la consommation HRC du plan de base. La relance confirme que le modèle est très sensible au coût de la matière première.
 
 Interprétation business : la négociation HRC est un levier majeur. Une hausse HRC détériore fortement la marge et conduit le modèle à refuser davantage de commandes.
+
+\begin{table}[H]
+\centering
+\caption{Synthèse des scénarios obligatoires}
+\label{tab:scenarios-obligatoires}
+\begin{tabular}{lrrr}
+\toprule
+Scénario & Marge (MMAD) & Taux de service & Commandes acceptées \\
+\midrule
+Base & 33.04 & 78.78 \% & 50 \\
+HRC +10 \% & 24.23 & 76.02 \% & 49 \\
+Panne LGB S2 & 33.04 & 78.78 \% & 50 \\
+Commande urgente & 33.77 & 76.43 \% & 50 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \question{E21}
 Scénario panne LGB de deux jours supplémentaires en semaine 2.
@@ -628,6 +705,8 @@ Scénario commande urgente entrante.
 La commande urgente de 300 T de HDG DC01, épaisseur 0.5 mm, largeur 1140 mm, semaine 1, prix 11\,500 MAD/T, est acceptée. Elle passe par PK $\rightarrow$ CRMB $\rightarrow$ LGA. Sa marge propre est de 1.067 MMAD. Elle remplace CMD-036 dans le plan optimal.
 
 La marge globale passe de 33.04 MMAD à 33.77 MMAD, soit un gain de 0.728 MMAD. Le taux de service global baisse mécaniquement car le carnet total augmente de 300 T, mais économiquement l'acceptation est rentable.
+
+Le coût d'opportunité de cette commande est visible dans le changement de portefeuille : la commande urgente remplace CMD-036. Le simulateur ne se contente donc pas de dire si la commande est techniquement faisable ; il mesure aussi ce qu'elle déplace dans le plan optimal.
 
 \question{B8}
 La disponibilité DC01 a été variée de -50 \% à +50 \%. La marge augmente jusqu'à la disponibilité actuelle de 6\,750 T, puis reste stable au-delà. Le changement de pente se situe donc autour de 6\,750 T. Cela signifie qu'une fois ce niveau atteint, DC01 cesse d'être le goulot marginal et d'autres contraintes prennent le relais.
@@ -667,7 +746,9 @@ Multiplicateur cadence & Marge (MMAD) & Taux de service & Commandes acceptées \
 \end{table}
 
 % ============================================================
+\clearpage
 \section{Limites et extensions}
+\sectiontarget{1 a 2 pages}
 
 \question{E23}
 Les recommandations opérationnelles sont :
@@ -710,7 +791,9 @@ Pour transformer le prototype en outil de production, il faudrait ajouter :
 Estimation d'industrialisation : en développement interne, il faut compter 2 à 3 ingénieurs pendant 12 à 18 mois. En prestation externe, le budget probable est de 800\,000 à 1\,500\,000 MAD, incluant développement, intégration SI et formation. Si le simulateur améliore la marge de seulement 2 \%, soit environ 750\,000 MAD par horizon de 4 semaines sur une marge annuelle estimée à 150 MMAD, l'amortissement peut être inférieur à 3 mois d'exploitation.
 
 % ============================================================
+\clearpage
 \section{Conclusion}
+\sectiontarget{0.5 page}
 
 Le simulateur construit avec PuLP fournit un plan de marche optimal et interprétable pour le carnet Maghreb Steel. La solution de base livre 13\,551 T, soit 78.78 \% du tonnage demandé, avec une marge de 33.04 MMAD. Le modèle identifie les commandes non planifiables, les goulots machines et les grades HRC critiques.
 
