@@ -1,0 +1,17 @@
+﻿order_id,client,family,grade,thickness,width,tonnage,price,due_week,priority,accepted,route_id,route_lines,prod_week,delivery_week,delay_weeks,realized_margin,blocking_reason
+CMD-002,Client_05,PPGI,DX51,0.7,1250,356.0,12347.0,1,Haute,False,,,,,,0.0,Routage impossible ou hors périmètre
+CMD-005,Client_20,Quarto,DD13,6.0,1100,243.0,8125.0,1,Normale,False,,,,,,0.0,Routage impossible ou hors périmètre
+CMD-009,Client_18,CRC,DX51,1.0,1090,243.0,9027.0,1,Normale,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-010,Client_17,CRC,S320,0.3,1280,192.0,10333.0,1,Normale,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-014,Client_10,PPGI,DC01,0.7,1280,414.0,11943.0,2,Haute,False,,,,,,0.0,Routage impossible ou hors périmètre
+CMD-017,Client_14,HDG,S320,0.9,1090,136.0,11208.0,2,Normale,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-018,Client_07,HDG,S320,0.9,1100,169.0,11026.0,2,Normale,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-023,Client_11,CRC,S320,0.4,1020,225.0,10062.0,2,Normale,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-030,Client_10,CRC,DX51,1.0,1320,87.0,8749.0,2,Basse,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-031,Client_05,CRC,DX51,0.7,1090,131.0,9091.0,2,Basse,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-032,Client_20,CRC,DX51,0.7,1280,576.0,9257.0,3,Haute,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-047,Client_14,CRC,S320,0.3,1280,184.0,10210.0,3,Basse,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-050,Client_01,CRC,S320,0.5,1020,114.0,9830.0,4,Normale,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-053,Client_18,CRC,S320,0.2,1100,260.0,10349.0,4,Normale,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-055,Client_03,CRC,DX52,0.7,1280,221.0,9101.0,4,Basse,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-058,Client_08,CRC,DX51,0.2,1320,99.0,9535.0,4,Basse,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
