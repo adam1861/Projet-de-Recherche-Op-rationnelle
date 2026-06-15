@@ -1,32 +1,32 @@
 ﻿constraint,type,line,family,week,grade,rhs,slack,shadow_price
-order_once_CMD_001,order_once,,,,,,-0.0,-0.0
-order_once_CMD_003,order_once,,,,,,-0.0,-0.0
-order_once_CMD_004,order_once,,,,,,1.0,-0.0
-order_once_CMD_006,order_once,,,,,,-0.0,-0.0
-order_once_CMD_007,order_once,,,,,,1.0,-0.0
-order_once_CMD_008,order_once,,,,,,1.0,-0.0
-order_once_CMD_009,order_once,,,,,,1.0,-0.0
-order_once_CMD_010,order_once,,,,,,1.0,-0.0
-order_once_CMD_011,order_once,,,,,,-0.0,-0.0
-order_once_CMD_012,order_once,,,,,,-0.0,-0.0
-order_once_CMD_013,order_once,,,,,,1.0,-0.0
-order_once_CMD_015,order_once,,,,,,-0.0,-0.0
-order_once_CMD_016,order_once,,,,,,1.0,-0.0
-order_once_CMD_017,order_once,,,,,,-0.0,-0.0
-order_once_CMD_018,order_once,,,,,,-0.0,-0.0
-order_once_CMD_019,order_once,,,,,,-0.0,-0.0
-order_once_CMD_020,order_once,,,,,,-0.0,-0.0
-order_once_CMD_021,order_once,,,,,,1.0,-0.0
-order_once_CMD_022,order_once,,,,,,-0.0,-0.0
-order_once_CMD_023,order_once,,,,,,1.0,-0.0
-order_once_CMD_024,order_once,,,,,,-0.0,-0.0
-order_once_CMD_025,order_once,,,,,,1.0,-0.0
-order_once_CMD_026,order_once,,,,,,-0.0,-0.0
-order_once_CMD_027,order_once,,,,,,1.0,-0.0
-order_once_CMD_028,order_once,,,,,,-0.0,-0.0
-order_once_CMD_029,order_once,,,,,,1.0,-0.0
-order_once_CMD_030,order_once,,,,,,1.0,-0.0
-order_once_CMD_031,order_once,,,,,,1.0,-0.0
+ip_balance_FH_CRMA_S1,interprocess_balance,,FH-CRMA (vers LGA/LGB),1,,,-0.0,-100.0
+ip_balance_FH_CRMB_S1,interprocess_balance,,FH-CRMB (vers BAF/LGA/LGB),1,,,-0.0,-100.0
+ip_balance_BAF_out_S1,interprocess_balance,,BAF-out (vers SKP/LGB-BACR),1,,,-0.0,-100.0
+ip_balance_SKP_out_S1,interprocess_balance,,SKP-out (vers CRC),1,,,-0.0,-100.0
+ip_balance_FH_CRMA_S2,interprocess_balance,,FH-CRMA (vers LGA/LGB),2,,,-0.0,-75.0
+ip_balance_FH_CRMB_S2,interprocess_balance,,FH-CRMB (vers BAF/LGA/LGB),2,,,2.8421709e-14,-75.0
+ip_balance_BAF_out_S2,interprocess_balance,,BAF-out (vers SKP/LGB-BACR),2,,,-0.0,-75.0
+ip_balance_SKP_out_S2,interprocess_balance,,SKP-out (vers CRC),2,,,2.8421709e-14,-75.0
+ip_balance_FH_CRMA_S3,interprocess_balance,,FH-CRMA (vers LGA/LGB),3,,,-0.0,-50.0
+ip_balance_FH_CRMB_S3,interprocess_balance,,FH-CRMB (vers BAF/LGA/LGB),3,,,4.2632564e-14,-50.0
+ip_balance_BAF_out_S3,interprocess_balance,,BAF-out (vers SKP/LGB-BACR),3,,,-0.0,-50.0
+ip_balance_SKP_out_S3,interprocess_balance,,SKP-out (vers CRC),3,,,5.6843419e-14,-50.0
+ip_balance_FH_CRMA_S4,interprocess_balance,,FH-CRMA (vers LGA/LGB),4,,,-0.0,-25.0
+ip_balance_FH_CRMB_S4,interprocess_balance,,FH-CRMB (vers BAF/LGA/LGB),4,,,-0.0,-25.0
+ip_balance_BAF_out_S4,interprocess_balance,,BAF-out (vers SKP/LGB-BACR),4,,,-1.4210855e-14,-25.0
+ip_balance_SKP_out_S4,interprocess_balance,,SKP-out (vers CRC),4,,,2.8421709e-14,-25.0
+pk_stock_balance_DX51_S1,pk_stock_balance,,,1,DX51,,-0.0,0.0
+pk_stock_balance_DX51_S2,pk_stock_balance,,,2,DX51,,-0.0,0.0
+pk_stock_balance_DX51_S3,pk_stock_balance,,,3,DX51,,5.6843419e-14,0.0
+pk_stock_balance_DX51_S4,pk_stock_balance,,,4,DX51,,1.4210855e-14,0.0
+pk_stock_balance_DX52_S1,pk_stock_balance,,,1,DX52,,-0.0,0.0
+pk_stock_balance_DX52_S2,pk_stock_balance,,,2,DX52,,-0.0,0.0
+pk_stock_balance_DX52_S3,pk_stock_balance,,,3,DX52,,5.6843419e-14,0.0
+pk_stock_balance_DX52_S4,pk_stock_balance,,,4,DX52,,-0.0,0.0
+pk_stock_balance_S320_S1,pk_stock_balance,,,1,S320,,-0.0,0.0
+pk_stock_balance_S320_S2,pk_stock_balance,,,2,S320,,-1.4210855e-14,0.0
+pk_stock_balance_S320_S3,pk_stock_balance,,,3,S320,,1.4210855e-14,0.0
+pk_stock_balance_S320_S4,pk_stock_balance,,,4,S320,,1.9942404e-27,0.0
 order_once_CMD_032,order_once,,,,,,1.0,-0.0
 order_once_CMD_033,order_once,,,,,,1.0,-0.0
 order_once_CMD_034,order_once,,,,,,1.0,-0.0
@@ -295,3 +295,39 @@ stock_min_BACR_S3,stock_min,,BACR,3,,30.0,-120.0,-0.0
 stock_max_BACR_S3,stock_max,,BACR,3,,500.0,350.0,-0.0
 stock_min_BACR_S4,stock_min,,BACR,4,,30.0,-120.0,-0.0
 stock_max_BACR_S4,stock_max,,BACR,4,,500.0,350.0,-0.0
+pk_stock_balance_DC01_S1,pk_stock_balance,,,1,DC01,,-0.0,0.0
+pk_stock_balance_DC01_S2,pk_stock_balance,,,2,DC01,,1.6029654e-26,0.0
+pk_stock_balance_DC01_S3,pk_stock_balance,,,3,DC01,,-1.4210855e-14,0.0
+pk_stock_balance_DC01_S4,pk_stock_balance,,,4,DC01,,-1.4210855e-13,0.0
+order_once_CMD_004,order_once,,,,,,1.0,-0.0
+order_once_CMD_006,order_once,,,,,,-0.0,-0.0
+order_once_CMD_007,order_once,,,,,,1.0,-0.0
+order_once_CMD_008,order_once,,,,,,1.0,-0.0
+order_once_CMD_009,order_once,,,,,,1.0,-0.0
+order_once_CMD_010,order_once,,,,,,1.0,-0.0
+order_once_CMD_011,order_once,,,,,,-0.0,-0.0
+order_once_CMD_012,order_once,,,,,,-0.0,-0.0
+order_once_CMD_013,order_once,,,,,,1.0,-0.0
+order_once_CMD_015,order_once,,,,,,-0.0,-0.0
+pk_stock_balance_DD13_S1,pk_stock_balance,,,1,DD13,,-0.0,0.0
+order_once_CMD_031,order_once,,,,,,1.0,-0.0
+order_once_CMD_001,order_once,,,,,,-0.0,-0.0
+pk_stock_balance_DD13_S2,pk_stock_balance,,,2,DD13,,2.8421709e-14,0.0
+pk_stock_balance_DD13_S3,pk_stock_balance,,,3,DD13,,-1.4210855e-14,0.0
+pk_stock_balance_DD13_S4,pk_stock_balance,,,4,DD13,,-0.0,0.0
+order_once_CMD_016,order_once,,,,,,1.0,-0.0
+order_once_CMD_017,order_once,,,,,,-0.0,-0.0
+order_once_CMD_018,order_once,,,,,,-0.0,-0.0
+order_once_CMD_019,order_once,,,,,,-0.0,-0.0
+order_once_CMD_020,order_once,,,,,,-0.0,-0.0
+order_once_CMD_021,order_once,,,,,,1.0,-0.0
+order_once_CMD_022,order_once,,,,,,-0.0,-0.0
+order_once_CMD_023,order_once,,,,,,1.0,-0.0
+order_once_CMD_024,order_once,,,,,,-0.0,-0.0
+order_once_CMD_025,order_once,,,,,,1.0,-0.0
+order_once_CMD_026,order_once,,,,,,-0.0,-0.0
+order_once_CMD_027,order_once,,,,,,1.0,-0.0
+order_once_CMD_028,order_once,,,,,,-0.0,-0.0
+order_once_CMD_029,order_once,,,,,,1.0,-0.0
+order_once_CMD_030,order_once,,,,,,1.0,-0.0
+order_once_CMD_003,order_once,,,,,,-0.0,-0.0

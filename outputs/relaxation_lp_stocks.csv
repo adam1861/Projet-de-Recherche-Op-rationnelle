@@ -1,37 +1,57 @@
-﻿stock_type,family_or_point,week,stock_t,min_t,max_t,within_bounds
-finished,HRC DEC,1,200.0,50.0,600.0,True
-finished,HRC DEC,2,200.0,50.0,600.0,True
-finished,HRC DEC,3,200.0,50.0,600.0,True
-finished,HRC DEC,4,200.0,50.0,600.0,True
-finished,CRC,1,450.0,100.0,1500.0,True
-finished,CRC,2,450.0,100.0,1500.0,True
-finished,CRC,3,450.0,100.0,1500.0,True
-finished,CRC,4,450.0,100.0,1500.0,True
-finished,HDG,1,380.0,80.0,1200.0,True
-finished,HDG,2,380.0,80.0,1200.0,True
-finished,HDG,3,380.0,80.0,1200.0,True
-finished,HDG,4,380.0,80.0,1200.0,True
-finished,PPGI,1,220.0,50.0,800.0,True
-finished,PPGI,2,220.0,50.0,800.0,True
-finished,PPGI,3,220.0,50.0,800.0,True
-finished,PPGI,4,220.0,50.0,800.0,True
-finished,BACR,1,150.0,30.0,500.0,True
-finished,BACR,2,150.0,30.0,500.0,True
-finished,BACR,3,150.0,30.0,500.0,True
-finished,BACR,4,150.0,30.0,500.0,True
-interprocess_buffer,FH-CRMA (vers LGA/LGB),1,350.0,100.0,800.0,True
-interprocess_buffer,FH-CRMA (vers LGA/LGB),2,350.0,100.0,800.0,True
-interprocess_buffer,FH-CRMA (vers LGA/LGB),3,350.0,100.0,800.0,True
-interprocess_buffer,FH-CRMA (vers LGA/LGB),4,350.0,100.0,800.0,True
-interprocess_buffer,FH-CRMB (vers BAF/LGA/LGB),1,420.0,100.0,1000.0,True
-interprocess_buffer,FH-CRMB (vers BAF/LGA/LGB),2,420.0,100.0,1000.0,True
-interprocess_buffer,FH-CRMB (vers BAF/LGA/LGB),3,420.0,100.0,1000.0,True
-interprocess_buffer,FH-CRMB (vers BAF/LGA/LGB),4,420.0,100.0,1000.0,True
-interprocess_buffer,BAF-out (vers SKP/LGB-BACR),1,280.0,80.0,600.0,True
-interprocess_buffer,BAF-out (vers SKP/LGB-BACR),2,280.0,80.0,600.0,True
-interprocess_buffer,BAF-out (vers SKP/LGB-BACR),3,280.0,80.0,600.0,True
-interprocess_buffer,BAF-out (vers SKP/LGB-BACR),4,280.0,80.0,600.0,True
-interprocess_buffer,SKP-out (vers CRC),1,180.0,50.0,400.0,True
-interprocess_buffer,SKP-out (vers CRC),2,180.0,50.0,400.0,True
-interprocess_buffer,SKP-out (vers CRC),3,180.0,50.0,400.0,True
-interprocess_buffer,SKP-out (vers CRC),4,180.0,50.0,400.0,True
+﻿stock_type,family_or_point,week,stock_t,min_t,max_t,within_bounds,inflow_t,outflow_t
+finished,HRC DEC,1,200.0,50.0,600.0,True,,
+finished,HRC DEC,2,200.0,50.0,600.0,True,,
+finished,HRC DEC,3,200.0,50.0,600.0,True,,
+finished,HRC DEC,4,200.0,50.0,600.0,True,,
+finished,CRC,1,450.0,100.0,1500.0,True,,
+finished,CRC,2,450.0,100.0,1500.0,True,,
+finished,CRC,3,450.0,100.0,1500.0,True,,
+finished,CRC,4,450.0,100.0,1500.0,True,,
+finished,HDG,1,380.0,80.0,1200.0,True,,
+finished,HDG,2,380.0,80.0,1200.0,True,,
+finished,HDG,3,380.0,80.0,1200.0,True,,
+finished,HDG,4,380.0,80.0,1200.0,True,,
+finished,PPGI,1,220.0,50.0,800.0,True,,
+finished,PPGI,2,220.0,50.0,800.0,True,,
+finished,PPGI,3,220.0,50.0,800.0,True,,
+finished,PPGI,4,220.0,50.0,800.0,True,,
+finished,BACR,1,150.0,30.0,500.0,True,,
+finished,BACR,2,150.0,30.0,500.0,True,,
+finished,BACR,3,150.0,30.0,500.0,True,,
+finished,BACR,4,150.0,30.0,500.0,True,,
+pk_grade,DC01,1,1042.1862215676647,200.0,2000.0,True,2355.070712710994,2112.8844911433293
+pk_grade,DC01,2,916.8618497988218,200.0,2000.0,True,2108.806643239315,2234.1310150081576
+pk_grade,DC01,3,799.9999999999995,200.0,2000.0,True,0.0,116.8618497988223
+pk_grade,DC01,4,799.9999999999995,200.0,2000.0,True,1572.6635039695186,1572.6635039695186
+pk_grade,DD13,1,400.0,100.0,1200.0,True,1594.6725484866543,1594.6725484866543
+pk_grade,DD13,2,399.9999999999999,100.0,1200.0,True,770.9422467968317,770.9422467968318
+pk_grade,DD13,3,399.9999999999999,100.0,1200.0,True,0.0,0.0
+pk_grade,DD13,4,399.99999999999983,100.0,1200.0,True,285.2014145595454,285.20141455954547
+pk_grade,DX51,1,600.0,150.0,1500.0,True,1672.3308844849812,1672.3308844849812
+pk_grade,DX51,2,599.9999999999999,150.0,1500.0,True,500.2942637234552,500.2942637234553
+pk_grade,DX51,3,599.9999999999999,150.0,1500.0,True,979.3748511897443,979.3748511897443
+pk_grade,DX51,4,599.9999999999999,150.0,1500.0,True,0.0,0.0
+pk_grade,DX52,1,250.0,80.0,800.0,True,289.90103071852025,289.90103071852025
+pk_grade,DX52,2,640.3721460577908,80.0,800.0,True,1014.3547830626742,623.9826370048834
+pk_grade,DX52,3,250.0,80.0,800.0,True,0.0,390.3721460577908
+pk_grade,DX52,4,250.0,80.0,800.0,True,173.24418574178821,173.24418574178821
+pk_grade,S320,1,120.0,50.0,400.0,True,714.9077632098575,714.9077632098575
+pk_grade,S320,2,120.0,50.0,400.0,True,73.0922372770414,73.0922372770414
+pk_grade,S320,3,120.0,50.0,400.0,True,0.0,0.0
+pk_grade,S320,4,120.0,50.0,400.0,True,0.0,0.0
+interprocess,FH-CRMA (vers LGA/LGB),1,350.0,100.0,800.0,True,0.0,0.0
+interprocess,FH-CRMA (vers LGA/LGB),2,350.0,100.0,800.0,True,0.0,0.0
+interprocess,FH-CRMA (vers LGA/LGB),3,350.0,100.0,800.0,True,0.0,0.0
+interprocess,FH-CRMA (vers LGA/LGB),4,350.0,100.0,800.0,True,0.0,0.0
+interprocess,FH-CRMB (vers BAF/LGA/LGB),1,419.9999999999982,100.0,1000.0,True,6193.1558165020415,6193.155816502043
+interprocess,FH-CRMB (vers BAF/LGA/LGB),2,419.9999999999982,100.0,1000.0,True,4076.3691278160586,4076.3691278160586
+interprocess,FH-CRMB (vers BAF/LGA/LGB),3,419.9999999999982,100.0,1000.0,True,1442.0105816349667,1442.0105816349667
+interprocess,FH-CRMB (vers BAF/LGA/LGB),4,419.9999999999982,100.0,1000.0,True,1970.1758311427266,1970.1758311427266
+interprocess,BAF-out (vers SKP/LGB-BACR),1,280.0,80.0,600.0,True,565.1645003115578,565.1645003115578
+interprocess,BAF-out (vers SKP/LGB-BACR),2,280.0,80.0,600.0,True,153.76884422110552,153.76884422110552
+interprocess,BAF-out (vers SKP/LGB-BACR),3,280.0,80.0,600.0,True,1247.399999628141,1247.399999628141
+interprocess,BAF-out (vers SKP/LGB-BACR),4,280.0,80.0,600.0,True,759.3312156884423,759.3312156884423
+interprocess,SKP-out (vers CRC),1,180.0,50.0,400.0,True,562.33867781,562.33867781
+interprocess,SKP-out (vers CRC),2,180.0,50.0,400.0,True,153.0,153.0
+interprocess,SKP-out (vers CRC),3,180.0,50.0,400.0,True,1241.16299963,1241.16299963
+interprocess,SKP-out (vers CRC),4,180.0,50.0,400.0,True,755.53455961,755.53455961

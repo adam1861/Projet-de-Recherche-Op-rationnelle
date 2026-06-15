@@ -30,10 +30,10 @@ def run_all(data_path: Path, out_dir: Path, time_limit: int = 300) -> None:
     base_refused_shadow.to_csv(out_dir / "base_refused_shadow_based.csv", index=False, encoding="utf-8-sig")
 
     campaign_log = out_dir / "cbc_campaigns.log"
-    campaigns = solve_model(data, campaigns=True, relax=False, time_limit=time_limit, log_path=campaign_log)
+    campaigns = solve_model(data, campaigns=True, relax=False, time_limit=time_limit, log_path=campaign_log, staged_routes=False)
     export_result(campaigns, out_dir, "campaigns")
 
-    campaign_lp = solve_model(data, campaigns=True, relax=True, time_limit=time_limit)
+    campaign_lp = solve_model(data, campaigns=True, relax=True, time_limit=time_limit, staged_routes=False)
     export_result(campaign_lp, out_dir, "campaigns_relaxation_lp")
 
     hrc10 = solve_model(data, hrc_multiplier=1.10, time_limit=time_limit)
@@ -76,7 +76,7 @@ def run_all(data_path: Path, out_dir: Path, time_limit: int = 300) -> None:
     export_result(urgent_result, out_dir, "scenario_commande_urgente")
 
     envelope_rows = []
-    for mult in [0.50, 0.60, 0.70, 0.80, 0.90, 1.00, 1.10, 1.20, 1.30, 1.40, 1.50]:
+    for mult in [0.50, 0.70, 0.90, 1.00, 1.10, 1.50]:
         res = solve_model(data, dc01_availability_multiplier=mult, time_limit=time_limit)
         envelope_rows.append(
             {

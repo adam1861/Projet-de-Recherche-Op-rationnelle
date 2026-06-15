@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from itertools import combinations_with_replacement
 import math
 import re
 import time
@@ -18,6 +19,12 @@ from .data_loader import InputData, WEEKS, thickness_bucket
 LINES = ["PK", "CRMA", "CRMB", "BAF", "SKP", "LGA", "LGB"]
 MAIN_FAMILIES = ["CRC", "HDG", "PPGI", "BACR"]
 MODELED_FAMILIES = ["HRC DEC", "CRC", "HDG", "PPGI", "BACR"]
+INTERPROCESS_POINTS = {
+    "FH-CRMA": "FH-CRMA (vers LGA/LGB)",
+    "FH-CRMB": "FH-CRMB (vers BAF/LGA/LGB)",
+    "BAF-out": "BAF-out (vers SKP/LGB-BACR)",
+    "SKP-out": "SKP-out (vers CRC)",
+}
 
 
 @dataclass(frozen=True)
@@ -137,8 +144,8 @@ def route_economics(order: pd.Series, route: Route, data: InputData) -> dict[str
         zinc_cost = tonnage * data.params["Consommation zinc HDG"] * data.params["Prix zinc"]
     if route.family == "PPGI":
         zinc_cost = tonnage * data.params["Consommation zinc PPGI"] * data.params["Prix zinc"]
-    if route.family == "PPGI":
-        paint_cost = tonnage * data.params["Consommation peinture PPGI"] * data.params["Prix peinture (PPGI)"]
+    # Clarification Maghreb Steel: the paint cost is already integrated in
+    # LGA-PPGI variable costs. Paint parameters are kept only for sensitivity.
 
     margin_before_timing = (
         revenue
@@ -165,8 +172,13 @@ def route_economics(order: pd.Series, route: Route, data: InputData) -> dict[str
     }
 
 
-def build_options(data: InputData) -> pd.DataFrame:
-    """Create one row for each order-route-production week-delivery week option."""
+def build_options(data: InputData, *, staged_routes: bool = True) -> pd.DataFrame:
+    """Create rows for each order-route-stage schedule-delivery option.
+
+    Each process step receives its own week. This makes interprocess stocks
+    meaningful: material can leave PK/CRM/BAF/SKP in one week and be consumed
+    by the next step in a later week.
+    """
 
     rows: list[dict[str, object]] = []
     holding_cost = data.params["Coût stockage produit fini"]
@@ -174,9 +186,16 @@ def build_options(data: InputData) -> pd.DataFrame:
         routes = allowed_routes(order)
         for route in routes:
             econ = route_economics(order, route, data)
-            for prod_week in WEEKS:
+            schedules = (
+                combinations_with_replacement(WEEKS, len(route.lines))
+                if staged_routes
+                else ((week,) * len(route.lines) for week in WEEKS)
+            )
+            for stage_weeks in schedules:
+                prod_week = stage_weeks[0]
+                completion_week = stage_weeks[-1]
                 for delivery_week in WEEKS:
-                    if prod_week > delivery_week:
+                    if completion_week > delivery_week:
                         continue
                     delay = max(0, delivery_week - int(order["DueWeek"]))
                     delay_penalty = (
@@ -184,8 +203,9 @@ def build_options(data: InputData) -> pd.DataFrame:
                         * delay
                         * data.params[f"Pénalité retard commande {order['Priorite']}"]
                     )
-                    stock_cost = float(order["Tonnage"]) * max(0, delivery_week - prod_week) * holding_cost
+                    stock_cost = float(order["Tonnage"]) * max(0, delivery_week - completion_week) * holding_cost
                     margin = econ["margin_before_timing"] - delay_penalty - stock_cost
+                    stage_cols = {f"week_{line}": week for line, week in zip(route.lines, stage_weeks)}
                     rows.append(
                         {
                             "order_idx": int(order_idx),
@@ -201,13 +221,16 @@ def build_options(data: InputData) -> pd.DataFrame:
                             "priority": order["Priorite"],
                             "route_id": route.id,
                             "route_lines": ">".join(route.lines),
+                            "stage_schedule": ">".join(f"{line}:S{week}" for line, week in zip(route.lines, stage_weeks)),
                             "prod_week": prod_week,
+                            "completion_week": completion_week,
                             "delivery_week": delivery_week,
                             "delay_weeks": delay,
                             "delay_penalty": delay_penalty,
                             "stock_cost": stock_cost,
                             "margin": margin,
                             **econ,
+                            **stage_cols,
                         }
                     )
     return pd.DataFrame(rows)
@@ -226,6 +249,7 @@ def solve_model(
     time_limit: int = 300,
     msg: bool = False,
     log_path: str | Path | None = None,
+    staged_routes: bool | None = None,
 ) -> SolveResult:
     """Build and solve the PuLP model."""
 
@@ -236,7 +260,9 @@ def solve_model(
         dc01_availability_multiplier=dc01_availability_multiplier,
         cadence_multiplier=cadence_multiplier,
     )
-    options = build_options(scenario_data)
+    if staged_routes is None:
+        staged_routes = not campaigns
+    options = build_options(scenario_data, staged_routes=staged_routes)
     problem = pulp.LpProblem("MaghrebSteel_Capacite_Commande", pulp.LpMaximize)
 
     cat = pulp.LpContinuous if relax else pulp.LpBinary
@@ -244,7 +270,7 @@ def solve_model(
         i: pulp.LpVariable(f"x_{i}", lowBound=0, upBound=1, cat=cat) for i in options.index
     }
 
-    problem += pulp.lpSum(options.loc[i, "margin"] * var for i, var in x.items()), "Marge_totale"
+    objective_expr = pulp.lpSum(options.loc[i, "margin"] * var for i, var in x.items())
 
     constraint_meta: dict[str, dict[str, object]] = {}
 
@@ -309,6 +335,13 @@ def solve_model(
             constraint_meta[min_name] = {"type": "stock_min", "family": family, "week": week, "rhs": min_stock}
             constraint_meta[max_name] = {"type": "stock_max", "family": family, "week": week, "rhs": max_stock}
 
+    pk_stock_vars = _add_pk_stock_constraints(problem, options, x, scenario_data, constraint_meta)
+    ip_stock_vars = _add_interprocess_stock_constraints(problem, options, x, scenario_data, constraint_meta)
+    ip_cost = _param_contains(scenario_data, "interprocess")
+    objective_expr -= ip_cost * pulp.lpSum(ip_stock_vars.values())
+
+    problem += objective_expr, "Marge_totale"
+
     solver = pulp.PULP_CBC_CMD(msg=msg, timeLimit=time_limit, logPath=str(log_path) if log_path else None)
     start = time.perf_counter()
     problem.solve(solver)
@@ -336,7 +369,8 @@ def solve_model(
         "extra_lgb_stop_week2": extra_lgb_stop_week2,
         "dc01_availability_multiplier": dc01_availability_multiplier,
         "cadence_multiplier": cadence_multiplier,
-        "variables": len(x) + len(z),
+        "staged_routes": str(staged_routes),
+        "variables": len(x) + len(z) + len(pk_stock_vars) + len(ip_stock_vars),
         "constraints": len(problem.constraints),
     }
 
@@ -396,11 +430,26 @@ def capacity_value(data: InputData, line: str, family: str, week: int) -> float 
     return max(0.0, cadence * (data.params["Jours ouvrés / semaine"] - data.stops.get((line, week), 0.0)))
 
 
+def _param_contains(data: InputData, fragment: str) -> float:
+    fragment = fragment.lower()
+    for key, value in data.params.items():
+        if fragment in key.lower():
+            return float(value)
+    raise KeyError(f"Parametre contenant {fragment!r} introuvable")
+
+
+def _line_week(row: pd.Series, line: str) -> int:
+    value = row.get(f"week_{line}")
+    if pd.isna(value):
+        return int(row["prod_week"])
+    return int(value)
+
+
 def _capacity_expressions(options: pd.DataFrame, x: dict[int, pulp.LpVariable]) -> dict[tuple[str, str, int], pulp.LpAffineExpression]:
     exprs: dict[tuple[str, str, int], pulp.LpAffineExpression] = {}
     for i, row in options.iterrows():
         for line in str(row["route_lines"]).split(">"):
-            key = (line, str(row["family"]), int(row["prod_week"]))
+            key = (line, str(row["family"]), _line_week(row, line))
             exprs.setdefault(key, pulp.LpAffineExpression())
             exprs[key] += float(row.get(f"input_{line}", 0.0)) * x[i]
     return exprs
@@ -415,12 +464,161 @@ def _finished_stock_expressions(
         for week in WEEKS:
             expr = pulp.LpAffineExpression(initial)
             for i, row in options[options["family"] == family].iterrows():
-                if int(row["prod_week"]) <= week:
+                if int(row["completion_week"]) <= week:
                     expr += float(row["tonnage"]) * x[i]
                 if int(row["delivery_week"]) <= week:
                     expr -= float(row["tonnage"]) * x[i]
             exprs[(family, week)] = expr
     return exprs
+
+
+def _add_interprocess_stock_constraints(
+    problem: pulp.LpProblem,
+    options: pd.DataFrame,
+    x: dict[int, pulp.LpVariable],
+    data: InputData,
+    constraint_meta: dict[str, dict[str, object]],
+) -> dict[tuple[str, int], pulp.LpVariable]:
+    """Add dynamic interprocess inventory balances for B3."""
+
+    stock_vars: dict[tuple[str, int], pulp.LpVariable] = {}
+    for short, point in INTERPROCESS_POINTS.items():
+        if point not in data.interprocess_stocks:
+            continue
+        limits = data.interprocess_stocks[point]
+        for week in WEEKS:
+            stock_vars[(point, week)] = pulp.LpVariable(
+                f"ip_stock_{safe_name(short)}_S{week}",
+                lowBound=limits["min"],
+                upBound=limits["max"],
+                cat=pulp.LpContinuous,
+            )
+
+    for short, point in INTERPROCESS_POINTS.items():
+        if point not in data.interprocess_stocks:
+            continue
+        for week in WEEKS:
+            previous = (
+                data.interprocess_stocks[point]["initial"]
+                if week == WEEKS[0]
+                else stock_vars[(point, week - 1)]
+            )
+            inflow, outflow = _interprocess_week_flows(options, x, data, short, week)
+            name = f"ip_balance_{safe_name(short)}_S{week}"
+            problem += stock_vars[(point, week)] == previous + inflow - outflow, name
+            constraint_meta[name] = {"type": "interprocess_balance", "family": point, "week": week}
+
+    return stock_vars
+
+
+def _add_pk_stock_constraints(
+    problem: pulp.LpProblem,
+    options: pd.DataFrame,
+    x: dict[int, pulp.LpVariable],
+    data: InputData,
+    constraint_meta: dict[str, dict[str, object]],
+) -> dict[tuple[str, int], pulp.LpVariable]:
+    """Add dynamic PK stock balances by steel grade.
+
+    PK stock is a qualified semi-finished stock, differentiated by grade as
+    clarified by Maghreb Steel. Downstream stocks remain aggregated.
+    """
+
+    stock_vars: dict[tuple[str, int], pulp.LpVariable] = {}
+    for grade, limits in data.pk_stocks.items():
+        for week in WEEKS:
+            stock_vars[(grade, week)] = pulp.LpVariable(
+                f"pk_stock_{safe_name(grade)}_S{week}",
+                lowBound=limits["min"],
+                upBound=limits["max"],
+                cat=pulp.LpContinuous,
+            )
+
+    for grade, limits in data.pk_stocks.items():
+        for week in WEEKS:
+            previous = limits["initial"] if week == WEEKS[0] else stock_vars[(grade, week - 1)]
+            inflow, outflow = _pk_week_flows(options, x, data, grade, week)
+            name = f"pk_stock_balance_{safe_name(grade)}_S{week}"
+            problem += stock_vars[(grade, week)] == previous + inflow - outflow, name
+            constraint_meta[name] = {"type": "pk_stock_balance", "grade": grade, "week": week}
+
+    return stock_vars
+
+
+def _pk_week_flows(
+    options: pd.DataFrame,
+    x: dict[int, pulp.LpVariable],
+    data: InputData,
+    grade: str,
+    week: int,
+) -> tuple[pulp.LpAffineExpression, pulp.LpAffineExpression]:
+    inflow = pulp.LpAffineExpression()
+    outflow = pulp.LpAffineExpression()
+    for i, row in options[options["grade"] == grade].iterrows():
+        lines = str(row["route_lines"]).split(">")
+        if "PK" not in lines:
+            continue
+        downstream = _next_line(lines, "PK")
+        if downstream is None:
+            continue
+        pk_output = float(row["input_PK"]) * data.yields["PK"]
+        if _line_week(row, "PK") == week:
+            inflow += pk_output * x[i]
+        if _line_week(row, downstream) == week:
+            outflow += float(row.get(f"input_{downstream}", 0.0)) * x[i]
+    return inflow, outflow
+
+
+def _interprocess_week_flows(
+    options: pd.DataFrame, x: dict[int, pulp.LpVariable], data: InputData, point: str, week: int
+) -> tuple[pulp.LpAffineExpression, pulp.LpAffineExpression]:
+    inflow = pulp.LpAffineExpression()
+    outflow = pulp.LpAffineExpression()
+
+    for i, row in options.iterrows():
+        lines = str(row["route_lines"]).split(">")
+        family = str(row["family"])
+
+        if point == "FH-CRMA" and "CRMA" in lines:
+            downstream = _next_line(lines, "CRMA")
+            if downstream in {"LGA", "LGB"}:
+                if _line_week(row, "CRMA") == week:
+                    inflow += float(row["input_CRMA"]) * data.yields["CRMA"] * x[i]
+                if _line_week(row, downstream) == week:
+                    outflow += float(row.get(f"input_{downstream}", 0.0)) * x[i]
+
+        elif point == "FH-CRMB" and "CRMB" in lines:
+            downstream = _next_line(lines, "CRMB")
+            if downstream in {"BAF", "LGA", "LGB"}:
+                if _line_week(row, "CRMB") == week:
+                    inflow += float(row["input_CRMB"]) * data.yields["CRMB"] * x[i]
+                if _line_week(row, downstream) == week:
+                    outflow += float(row.get(f"input_{downstream}", 0.0)) * x[i]
+
+        elif point == "BAF-out" and "BAF" in lines:
+            downstream = _next_line(lines, "BAF")
+            if downstream in {"SKP", "LGB"}:
+                if _line_week(row, "BAF") == week:
+                    inflow += float(row["input_BAF"]) * data.yields["BAF"] * x[i]
+                if _line_week(row, downstream) == week:
+                    outflow += float(row.get(f"input_{downstream}", 0.0)) * x[i]
+
+        elif point == "SKP-out" and family == "CRC" and "SKP" in lines:
+            if _line_week(row, "SKP") == week:
+                inflow += float(row["tonnage"]) * x[i]
+            if int(row["delivery_week"]) == week:
+                outflow += float(row["tonnage"]) * x[i]
+
+    return inflow, outflow
+
+
+def _next_line(lines: list[str], line: str) -> str | None:
+    if line not in lines:
+        return None
+    idx = lines.index(line)
+    if idx + 1 >= len(lines):
+        return None
+    return lines[idx + 1]
 
 
 def build_capacity_report(decisions: pd.DataFrame, data: InputData) -> pd.DataFrame:
@@ -433,9 +631,9 @@ def build_capacity_report(decisions: pd.DataFrame, data: InputData) -> pd.DataFr
                     continue
                 used = 0.0
                 if not decisions.empty:
-                    subset = decisions[(decisions["family"] == family) & (decisions["prod_week"] == week)]
+                    subset = decisions[decisions["family"] == family]
                     for _, row in subset.iterrows():
-                        if line in str(row["route_lines"]).split(">"):
+                        if line in str(row["route_lines"]).split(">") and _line_week(row, line) == week:
                             used += float(row.get(f"input_{line}", 0.0)) * float(row["value"])
                 rows.append(
                     {
@@ -456,7 +654,7 @@ def build_stock_report(decisions: pd.DataFrame, data: InputData) -> pd.DataFrame
     for family, limits in data.finished_stocks.items():
         stock = limits["initial"]
         for week in WEEKS:
-            produced = decisions[(decisions["family"] == family) & (decisions["prod_week"] == week)]["delivered_tonnage"].sum()
+            produced = decisions[(decisions["family"] == family) & (decisions["completion_week"] == week)]["delivered_tonnage"].sum()
             delivered = decisions[(decisions["family"] == family) & (decisions["delivery_week"] == week)]["delivered_tonnage"].sum()
             stock += produced - delivered
             rows.append(
@@ -470,20 +668,110 @@ def build_stock_report(decisions: pd.DataFrame, data: InputData) -> pd.DataFrame
                     "within_bounds": limits["min"] - 1e-5 <= stock <= limits["max"] + 1e-5,
                 }
             )
-    for point, limits in data.interprocess_stocks.items():
+    for grade, limits in data.pk_stocks.items():
+        stock = limits["initial"]
         for week in WEEKS:
+            inflow, outflow = _pk_week_flows_numeric(decisions, data, grade, week)
+            stock += inflow - outflow
             rows.append(
                 {
-                    "stock_type": "interprocess_buffer",
-                    "family_or_point": point,
+                    "stock_type": "pk_grade",
+                    "family_or_point": grade,
                     "week": week,
-                    "stock_t": limits["initial"],
+                    "stock_t": stock,
+                    "inflow_t": inflow,
+                    "outflow_t": outflow,
                     "min_t": limits["min"],
                     "max_t": limits["max"],
-                    "within_bounds": limits["min"] <= limits["initial"] <= limits["max"],
+                    "within_bounds": limits["min"] - 1e-5 <= stock <= limits["max"] + 1e-5,
+                }
+            )
+    for short, point in INTERPROCESS_POINTS.items():
+        if point not in data.interprocess_stocks:
+            continue
+        limits = data.interprocess_stocks[point]
+        stock = limits["initial"]
+        for week in WEEKS:
+            inflow, outflow = _interprocess_week_flows_numeric(decisions, data, short, week)
+            stock += inflow - outflow
+            rows.append(
+                {
+                    "stock_type": "interprocess",
+                    "family_or_point": point,
+                    "week": week,
+                    "stock_t": stock,
+                    "inflow_t": inflow,
+                    "outflow_t": outflow,
+                    "min_t": limits["min"],
+                    "max_t": limits["max"],
+                    "within_bounds": limits["min"] - 1e-5 <= stock <= limits["max"] + 1e-5,
                 }
             )
     return pd.DataFrame(rows)
+
+
+def _pk_week_flows_numeric(decisions: pd.DataFrame, data: InputData, grade: str, week: int) -> tuple[float, float]:
+    inflow = 0.0
+    outflow = 0.0
+    if decisions.empty:
+        return inflow, outflow
+    for _, row in decisions[decisions["grade"] == grade].iterrows():
+        value = float(row["value"])
+        lines = str(row["route_lines"]).split(">")
+        if "PK" not in lines:
+            continue
+        downstream = _next_line(lines, "PK")
+        if downstream is None:
+            continue
+        if _line_week(row, "PK") == week:
+            inflow += float(row["input_PK"]) * data.yields["PK"] * value
+        if _line_week(row, downstream) == week:
+            outflow += float(row.get(f"input_{downstream}", 0.0)) * value
+    return inflow, outflow
+
+
+def _interprocess_week_flows_numeric(decisions: pd.DataFrame, data: InputData, point: str, week: int) -> tuple[float, float]:
+    inflow = 0.0
+    outflow = 0.0
+    if decisions.empty:
+        return inflow, outflow
+
+    for _, row in decisions.iterrows():
+        value = float(row["value"])
+        lines = str(row["route_lines"]).split(">")
+        family = str(row["family"])
+
+        if point == "FH-CRMA" and "CRMA" in lines:
+            downstream = _next_line(lines, "CRMA")
+            if downstream in {"LGA", "LGB"}:
+                if _line_week(row, "CRMA") == week:
+                    inflow += float(row["input_CRMA"]) * data.yields["CRMA"] * value
+                if _line_week(row, downstream) == week:
+                    outflow += float(row.get(f"input_{downstream}", 0.0)) * value
+
+        elif point == "FH-CRMB" and "CRMB" in lines:
+            downstream = _next_line(lines, "CRMB")
+            if downstream in {"BAF", "LGA", "LGB"}:
+                if _line_week(row, "CRMB") == week:
+                    inflow += float(row["input_CRMB"]) * data.yields["CRMB"] * value
+                if _line_week(row, downstream) == week:
+                    outflow += float(row.get(f"input_{downstream}", 0.0)) * value
+
+        elif point == "BAF-out" and "BAF" in lines:
+            downstream = _next_line(lines, "BAF")
+            if downstream in {"SKP", "LGB"}:
+                if _line_week(row, "BAF") == week:
+                    inflow += float(row["input_BAF"]) * data.yields["BAF"] * value
+                if _line_week(row, downstream) == week:
+                    outflow += float(row.get(f"input_{downstream}", 0.0)) * value
+
+        elif point == "SKP-out" and family == "CRC" and "SKP" in lines:
+            if _line_week(row, "SKP") == week:
+                inflow += float(row["tonnage"]) * value
+            if int(row["delivery_week"]) == week:
+                outflow += float(row["tonnage"]) * value
+
+    return inflow, outflow
 
 
 def build_hrc_report(decisions: pd.DataFrame, data: InputData) -> pd.DataFrame:
@@ -515,7 +803,9 @@ def build_order_report(all_orders: pd.DataFrame, decisions: pd.DataFrame) -> pd.
                     "accepted": False,
                     "route_id": "",
                     "route_lines": "",
+                    "stage_schedule": "",
                     "prod_week": "",
+                    "completion_week": "",
                     "delivery_week": "",
                     "delay_weeks": "",
                     "realized_margin": 0.0,
@@ -538,7 +828,9 @@ def build_order_report(all_orders: pd.DataFrame, decisions: pd.DataFrame) -> pd.
                     "accepted": bool(rowsel["value"] > 0.5),
                     "route_id": rowsel["route_id"],
                     "route_lines": rowsel["route_lines"],
+                    "stage_schedule": rowsel.get("stage_schedule", ""),
                     "prod_week": int(rowsel["prod_week"]),
+                    "completion_week": int(rowsel["completion_week"]),
                     "delivery_week": int(rowsel["delivery_week"]),
                     "delay_weeks": int(rowsel["delay_weeks"]),
                     "realized_margin": float(rowsel["realized_margin"]),

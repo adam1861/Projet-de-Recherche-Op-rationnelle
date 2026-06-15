@@ -1,30 +1,30 @@
-﻿order_id,client,family,grade,thickness,width,tonnage,price,due_week,priority,accepted,route_id,route_lines,prod_week,delivery_week,delay_weeks,realized_margin,blocking_reason
-CMD-002,Client_05,PPGI,DX51,0.7,1250,356.0,12347.0,1,Haute,False,,,,,,0.0,Routage impossible ou hors périmètre
-CMD-004,Client_02,CRC,DD13,0.7,1320,95.0,9076.0,1,Normale,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-005,Client_20,Quarto,DD13,6.0,1100,243.0,8125.0,1,Normale,False,,,,,,0.0,Routage impossible ou hors périmètre
-CMD-007,Client_10,CRC,DX52,0.4,1140,277.0,9699.0,1,Normale,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-008,Client_05,BACR,DC01,0.4,1280,390.0,10212.0,1,Normale,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-009,Client_18,CRC,DX51,1.0,1090,243.0,9027.0,1,Normale,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-010,Client_17,CRC,S320,0.3,1280,192.0,10333.0,1,Normale,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-013,Client_08,PPGI,S320,0.35,1280,470.0,13136.0,2,Haute,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-014,Client_10,PPGI,DC01,0.7,1280,414.0,11943.0,2,Haute,False,,,,,,0.0,Routage impossible ou hors périmètre
-CMD-016,Client_01,BACR,DX51,0.9,1100,122.0,10224.0,2,Normale,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-021,Client_14,CRC,DC01,0.4,1090,153.0,9387.0,2,Normale,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-023,Client_11,CRC,S320,0.4,1020,225.0,10062.0,2,Normale,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-025,Client_16,HDG,DD13,0.5,1320,80.0,10258.0,2,Normale,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-027,Client_18,BACR,S320,0.9,1320,41.0,10543.0,2,Basse,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-029,Client_09,BACR,DD13,0.5,1250,40.0,9999.0,2,Basse,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-030,Client_10,CRC,DX51,1.0,1320,87.0,8749.0,2,Basse,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-031,Client_05,CRC,DX51,0.7,1090,131.0,9091.0,2,Basse,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-032,Client_20,CRC,DX51,0.7,1280,576.0,9257.0,3,Haute,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-033,Client_16,CRC,DX51,0.2,1100,565.0,9602.0,3,Haute,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-034,Client_18,CRC,DX52,0.4,1100,373.0,9802.0,3,Haute,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-036,Client_09,HRC DEC,DC01,3.0,1320,475.0,6492.0,3,Haute,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-045,Client_12,CRC,DC01,0.7,1320,77.0,8804.0,3,Basse,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-046,Client_15,BACR,DC01,0.7,1100,203.0,9783.0,3,Basse,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-047,Client_14,CRC,S320,0.3,1280,184.0,10210.0,3,Basse,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-050,Client_01,CRC,S320,0.5,1020,114.0,9830.0,4,Normale,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-051,Client_19,HRC DEC,DD13,2.5,1140,135.0,6804.0,4,Normale,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-055,Client_03,CRC,DX52,0.7,1280,221.0,9101.0,4,Basse,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-057,Client_12,BACR,DC01,0.5,1320,132.0,9833.0,4,Basse,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
-CMD-060,Client_12,CRC,DC01,0.5,1090,238.0,8778.0,4,Basse,False,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+﻿order_id,client,family,grade,thickness,width,tonnage,price,due_week,priority,accepted,route_id,route_lines,stage_schedule,prod_week,completion_week,delivery_week,delay_weeks,realized_margin,blocking_reason
+CMD-002,Client_05,PPGI,DX51,0.7,1250,356.0,12347.0,1,Haute,False,,,,,,,,0.0,Routage impossible ou hors périmètre
+CMD-004,Client_02,CRC,DD13,0.7,1320,95.0,9076.0,1,Normale,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-005,Client_20,Quarto,DD13,6.0,1100,243.0,8125.0,1,Normale,False,,,,,,,,0.0,Routage impossible ou hors périmètre
+CMD-007,Client_10,CRC,DX52,0.4,1140,277.0,9699.0,1,Normale,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-008,Client_05,BACR,DC01,0.4,1280,390.0,10212.0,1,Normale,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-009,Client_18,CRC,DX51,1.0,1090,243.0,9027.0,1,Normale,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-010,Client_17,CRC,S320,0.3,1280,192.0,10333.0,1,Normale,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-013,Client_08,PPGI,S320,0.35,1280,470.0,13136.0,2,Haute,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-014,Client_10,PPGI,DC01,0.7,1280,414.0,11943.0,2,Haute,False,,,,,,,,0.0,Routage impossible ou hors périmètre
+CMD-016,Client_01,BACR,DX51,0.9,1100,122.0,10224.0,2,Normale,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-021,Client_14,CRC,DC01,0.4,1090,153.0,9387.0,2,Normale,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-023,Client_11,CRC,S320,0.4,1020,225.0,10062.0,2,Normale,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-025,Client_16,HDG,DD13,0.5,1320,80.0,10258.0,2,Normale,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-027,Client_18,BACR,S320,0.9,1320,41.0,10543.0,2,Basse,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-029,Client_09,BACR,DD13,0.5,1250,40.0,9999.0,2,Basse,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-030,Client_10,CRC,DX51,1.0,1320,87.0,8749.0,2,Basse,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-031,Client_05,CRC,DX51,0.7,1090,131.0,9091.0,2,Basse,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-032,Client_20,CRC,DX51,0.7,1280,576.0,9257.0,3,Haute,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-033,Client_16,CRC,DX51,0.2,1100,565.0,9602.0,3,Haute,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-034,Client_18,CRC,DX52,0.4,1100,373.0,9802.0,3,Haute,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-036,Client_09,HRC DEC,DC01,3.0,1320,475.0,6492.0,3,Haute,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-045,Client_12,CRC,DC01,0.7,1320,77.0,8804.0,3,Basse,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-046,Client_15,BACR,DC01,0.7,1100,203.0,9783.0,3,Basse,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-047,Client_14,CRC,S320,0.3,1280,184.0,10210.0,3,Basse,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-050,Client_01,CRC,S320,0.5,1020,114.0,9830.0,4,Normale,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-051,Client_19,HRC DEC,DD13,2.5,1140,135.0,6804.0,4,Normale,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-055,Client_03,CRC,DX52,0.7,1280,221.0,9101.0,4,Basse,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-057,Client_12,BACR,DC01,0.5,1320,132.0,9833.0,4,Basse,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues
+CMD-060,Client_12,CRC,DC01,0.5,1090,238.0,8778.0,4,Basse,False,,,,,,,,0.0,Marge/opportunité inférieure aux commandes retenues

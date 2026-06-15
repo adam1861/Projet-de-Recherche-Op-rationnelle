@@ -75,7 +75,7 @@ python -m src.make_pdf --md rapport_technique.md --pdf rapport_technique.pdf
 
 ## Resultats principaux
 
-- Marge optimale de base : 33.04 MMAD.
+- Marge optimale de base : 33.21 MMAD apres correction du cout peinture PPGI et integration des stocks PK/interprocess.
 - Taux de service : 78.78 %.
 - Commandes acceptees : 50 / 66.
 - Goulot machine principal : LGA/HDG semaine 1.
@@ -87,4 +87,4 @@ python -m src.make_pdf --md rapport_technique.md --pdf rapport_technique.pdf
 - La contrainte ajoutee par image est integree : epaisseur < 0.6 mm sur LGA, epaisseur > 0.6 mm strictement sur LGB.
 - Quarto est exclu du flux principal.
 - PPGI reste exclusivement LGA ; donc les commandes PPGI d'epaisseur > 0.6 mm sont non routables dans ce cadrage.
-- Les stocks interprocess sont controles comme buffers statiques ; une extension industrielle devrait les rendre dynamiques par etape et par semaine.
+- Le stock PK est modelise dynamiquement par grade. Les stocks interprocess FH-CRMA, FH-CRMB, BAF-out et SKP-out restent agreges, comme precise par Maghreb Steel, avec bornes min/max et cout de stockage.
